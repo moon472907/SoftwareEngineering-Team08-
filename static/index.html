@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wiki</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+  <div id="loading" class="loading-overlay">
+    <div class="spinner"></div>
+  </div>
+
+  <header id="header">
+    <div class="header-left">
+      <button id="sidebar-toggle" class="icon-btn" title="사이드바 토글">☰</button>
+      <a href="#" id="logo">📚 Wiki</a>
+    </div>
+    <div class="header-center">
+      <div class="search-box">
+        <input type="text" id="search-input" placeholder="페이지 검색..." autocomplete="off">
+        <div id="search-results" class="search-dropdown"></div>
+      </div>
+    </div>
+    <div class="header-right" id="auth-area"></div>
+  </header>
+
+  <div id="app">
+    <nav id="sidebar">
+      <div class="sidebar-header">
+        <span>페이지 목록</span>
+        <button id="new-page-btn" class="icon-btn" title="새 페이지 만들기" style="display:none">+</button>
+      </div>
+      <ul id="page-list"></ul>
+    </nav>
+    <main id="content"></main>
+  </div>
+
+  <div id="toast-container"></div>
+
+  <!-- Login Modal -->
+  <div id="login-modal" class="modal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2>로그인</h2>
+        <button class="close-btn" data-close="login-modal">×</button>
+      </div>
+      <form id="login-form">
+        <div class="form-group">
+          <label for="login-username">사용자명</label>
+          <input type="text" id="login-username" required autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label for="login-password">비밀번호</label>
+          <input type="password" id="login-password" required autocomplete="current-password">
+        </div>
+        <div id="login-error" class="error-msg"></div>
+        <button type="submit" class="btn btn-primary" style="width:100%">로그인</button>
+      </form>
+      <p class="modal-footer">
+        계정이 없으신가요?
+        <a href="#" data-switch-from="login-modal" data-switch-to="register-modal">회원가입</a>
+      </p>
+    </div>
+  </div>
+
+  <!-- Register Modal -->
+  <div id="register-modal" class="modal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2>회원가입</h2>
+        <button class="close-btn" data-close="register-modal">×</button>
+      </div>
+      <form id="register-form">
+        <div class="form-group">
+          <label for="reg-username">사용자명</label>
+          <input type="text" id="reg-username" required minlength="3" maxlength="50">
+        </div>
+        <div class="form-group">
+          <label for="reg-email">이메일</label>
+          <input type="email" id="reg-email" required>
+        </div>
+        <div class="form-group">
+          <label for="reg-password">비밀번호</label>
+          <input type="password" id="reg-password" required minlength="8">
+        </div>
+        <div id="register-error" class="error-msg"></div>
+        <button type="submit" class="btn btn-primary" style="width:100%">회원가입</button>
+      </form>
+      <p class="modal-footer">
+        이미 계정이 있으신가요?
+        <a href="#" data-switch-from="register-modal" data-switch-to="login-modal">로그인</a>
+      </p>
+    </div>
+  </div>
+
+  <!-- Page Editor Modal -->
+  <div id="editor-modal" class="modal">
+    <div class="modal-box modal-large">
+      <div class="modal-header">
+        <h2 id="editor-title-label">새 페이지</h2>
+        <button class="close-btn" data-close="editor-modal">×</button>
+      </div>
+      <form id="editor-form">
+        <div class="form-group" style="padding:0 24px;padding-top:16px">
+          <label for="page-title-input">제목</label>
+          <input type="text" id="page-title-input" required placeholder="페이지 제목을 입력하세요">
+        </div>
+        <div class="editor-content-group">
+          <div class="editor-toolbar">
+            <button type="button" class="toolbar-btn" data-md-before="**" data-md-after="**" title="굵게"><b>B</b></button>
+            <button type="button" class="toolbar-btn" data-md-before="*" data-md-after="*" title="기울임"><i>I</i></button>
+            <button type="button" class="toolbar-btn" data-md-before="~~" data-md-after="~~" title="취소선"><s>S</s></button>
+            <div class="toolbar-divider"></div>
+            <button type="button" class="toolbar-btn" data-md-before="# " data-md-after="" title="제목 1">H1</button>
+            <button type="button" class="toolbar-btn" data-md-before="## " data-md-after="" title="제목 2">H2</button>
+            <button type="button" class="toolbar-btn" data-md-before="### " data-md-after="" title="제목 3">H3</button>
+            <div class="toolbar-divider"></div>
+            <button type="button" class="toolbar-btn" data-md-before="`" data-md-after="`" title="인라인 코드">〈〉</button>
+            <button type="button" class="toolbar-btn" data-md-before="```&#10;" data-md-after="&#10;```" title="코드 블록">```</button>
+            <div class="toolbar-divider"></div>
+            <button type="button" class="toolbar-btn" data-md-before="> " data-md-after="" title="인용">❝</button>
+            <button type="button" class="toolbar-btn" data-md-before="[" data-md-after="](url)" title="링크">🔗</button>
+            <button type="button" class="toolbar-btn" data-md-before="- " data-md-after="" title="목록">•</button>
+            <div class="toolbar-divider"></div>
+            <button type="button" id="preview-toggle-btn">👁 미리보기</button>
+          </div>
+          <div class="editor-split">
+            <textarea id="page-content-input" placeholder="Markdown으로 내용을 작성하세요...&#10;&#10;## 제목&#10;본문 내용...&#10;&#10;```python&#10;print('Hello, Wiki!')&#10;```"></textarea>
+            <div id="editor-preview" class="wiki-content editor-preview-pane hidden"></div>
+          </div>
+        </div>
+        <div id="editor-error" class="error-msg" style="padding:0 24px"></div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" data-close="editor-modal">취소</button>
+          <button type="submit" class="btn btn-primary" id="editor-submit-btn">저장</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Delete Confirm Modal -->
+  <div id="delete-modal" class="modal">
+    <div class="modal-box modal-small">
+      <div class="modal-header">
+        <h2>페이지 삭제</h2>
+      </div>
+      <div style="padding:20px 24px">
+        <p id="delete-message" style="color:var(--text-secondary);font-size:15px;line-height:1.5"></p>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-secondary" data-close="delete-modal">취소</button>
+        <button class="btn btn-danger" id="confirm-delete-btn">삭제</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>
