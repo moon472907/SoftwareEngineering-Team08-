@@ -1,35 +1,28 @@
-from datetime import datetime
+# schemas----- 회원가입 정보 조회 , 수정 , 로그인 etc..
+from pydantic import BaseModel
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr, Field
-
-
+# 회원가입 
 class UserCreate(BaseModel):
-    username: str = Field(min_length=3, max_length=50)
-    email: EmailStr
-    password: str = Field(min_length=8)
+    email: str
+    password: str
+    username : str
 
-
+# 유저 정보 수정
 class UserUpdate(BaseModel):
-    email: Optional[EmailStr] = None
-    password: Optional[str] = Field(default=None, min_length=8)
+    username: Optional[str] = None
 
-
+# 정보 조회 
 class UserResponse(BaseModel):
     id: int
-    username: str
     email: str
+    username: Optional[str] = None
     is_active: bool
     is_admin: bool
-    created_at: datetime
 
     model_config = {"from_attributes": True}
 
-
+# 로그인 응답 
 class Token(BaseModel):
     access_token: str
-    token_type: str = "bearer"
-
-
-class TokenData(BaseModel):
-    username: Optional[str] = None
+    token_type: str

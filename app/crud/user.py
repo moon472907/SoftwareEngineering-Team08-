@@ -1,59 +1,42 @@
-from typing import Optional
-
 from sqlalchemy.orm import Session
-
-from app.core.security import hash_password, verify_password
 from app.models.user import User
-from app.schemas.user import UserCreate, UserUpdate
+from app.schemas.user import UserCreate
+from app.core.security import get_password_hash
 
-
-def get_user(db: Session, user_id: int) -> Optional[User]:
-    return db.query(User).filter(User.id == user_id, User.is_active == True).first()
-
-
-def get_user_by_username(db: Session, username: str) -> Optional[User]:
-    return db.query(User).filter(User.username == username).first()
-
-
-def get_user_by_email(db: Session, email: str) -> Optional[User]:
+# 이메일로 유저 검색
+def get_user_by_email(db: Session, email: str):
     return db.query(User).filter(User.email == email).first()
 
+# ID로 유저 검색
+def get_user_by_id(db: Session, user_id: int):
+    return db.query(User).filter(User.id == user_id).first()
 
-def get_users(db: Session, skip: int = 0, limit: int = 20) -> list[User]:
-    return db.query(User).filter(User.is_active == True).offset(skip).limit(limit).all()
+# 전체 유저 목록
+def get_all_users(db: Session):
+    return db.query(User).all()
 
-
-def create_user(db: Session, user_in: UserCreate) -> User:
-    user = User(
-        username=user_in.username,
-        email=user_in.email,
-        hashed_password=hash_password(user_in.password),
+# 회원가입
+def create_user(db: Session, user: UserCreate):
+    hashed_password = get_password_hash(user.password)
+    db_user = User(
+        email=user.email,
+        hashed_password=hashed_password, 
+        username = user.username 
     )
-    db.add(user)
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+# 유저 정보 수정
+def update_user(db: Session, user: User, username: str):
+    user.username = username
     db.commit()
     db.refresh(user)
     return user
 
-
-def update_user(db: Session, user: User, user_in: UserUpdate) -> User:
-    if user_in.email is not None:
-        user.email = user_in.email
-    if user_in.password is not None:
-        user.hashed_password = hash_password(user_in.password)
-    db.commit()
-    db.refresh(user)
-    return user
-
-
-def deactivate_user(db: Session, user: User) -> User:
+# 계정 탈퇴 
+def deactivate_user(db: Session, user: User):
     user.is_active = False
     db.commit()
-    db.refresh(user)
     return user
-
-
-def authenticate_user(db: Session, username: str, password: str) -> Optional[User]:
-    user = get_user_by_username(db, username)
-    if user and verify_password(password, user.hashed_password):
-        return user
-    return None
