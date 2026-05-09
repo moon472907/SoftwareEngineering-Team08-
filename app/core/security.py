@@ -1,31 +1,21 @@
-from datetime import datetime, timedelta, timezone
-from typing import Optional
-
-import bcrypt
-from jose import JWTError, jwt
-
+from passlib.context import CryptContext
+from jose import jwt
+from datetime import datetime, timedelta
 from app.core.config import settings
 
+# 비밀번호 암호화 도구
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-def hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+# 1. 비밀번호를 암호로 바꾸기
+def get_password_hash(password):
+    return pwd_context.hash(password)
 
+# 2. 비밀번호 확인
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return bcrypt.checkpw(plain_password.encode(), hashed_password.encode())
-
-
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
-    to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + (
-        expires_delta or timedelta(minutes=settings.access_token_expire_minutes)
-    )
-    to_encode["exp"] = expire
-    return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
-
-
-def decode_token(token: str) -> Optional[dict]:
-    try:
-        return jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
-    except JWTError:
-        return None
+# 3. 로그인 성공 시 JWT 토큰 발급 
+def create_access_token(user_id: int):
+    expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    payload = {"sub": str(user_id), "exp": expire}
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
