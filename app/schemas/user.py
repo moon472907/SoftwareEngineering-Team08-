@@ -1,3 +1,4 @@
+# schemas----- 회원가입 정보 조회 , 수정 , 로그인 etc..
 from pydantic import BaseModel
 from typing import Optional
 
@@ -11,7 +12,7 @@ class UserCreate(BaseModel):
 class UserUpdate(BaseModel):
     username: Optional[str] = None
 
-# 유저 정보 조회 (비밀번호는 제외)
+# 정보 조회 
 class UserResponse(BaseModel):
     id: int
     email: str
