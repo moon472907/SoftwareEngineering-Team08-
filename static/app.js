@@ -107,6 +107,12 @@ document.addEventListener('click', e => {
     e.preventDefault();
     switchModal(switchFrom.dataset.switchFrom, switchFrom.dataset.switchTo);
   }
+
+  const wikiLink = e.target.closest('.wiki-link[data-page-id]');
+  if (wikiLink) {
+    e.preventDefault();
+    viewPage(Number(wikiLink.dataset.pageId));
+  }
 });
 
 document.addEventListener('keydown', e => {
@@ -123,16 +129,55 @@ marked.use({
   renderer: {
     code({ text, lang }) {
       const validLang = lang && hljs.getLanguage(lang) ? lang : 'plaintext';
-      const html = hljs.highlight(text, { language: validLang, ignoreIllegals: true }).value;
-      return `<pre><code class="hljs language-${validLang}">${html}</code></pre>`;
+      const highlighted = hljs.highlight(text, { language: validLang, ignoreIllegals: true }).value;
+      return `<pre><code class="hljs language-${validLang}">${highlighted}</code></pre>`;
     },
   },
 });
 
+// GitHub Alerts: > [!NOTE], > [!TIP], > [!IMPORTANT], > [!WARNING], > [!CAUTION]
+const ALERT_MAP = {
+  NOTE:      ['ℹ️', '정보',  'note'],
+  TIP:       ['💡', '팁',    'tip'],
+  IMPORTANT: ['❗', '중요',  'important'],
+  WARNING:   ['⚠️', '경고',  'warning'],
+  CAUTION:   ['🔴', '주의',  'caution'],
+};
+
+function processAlerts(html) {
+  return html.replace(/<blockquote>([\s\S]*?)<\/blockquote>/gi, (match, inner) => {
+    const m = inner.match(/\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]/i);
+    if (!m) return match;
+    const t = m[1].toUpperCase();
+    const [icon, label, cls] = ALERT_MAP[t];
+    const body = inner
+      .replace(/\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\](<br\s*\/?>)?\n?/i, '')
+      .trim();
+    return `<div class="gh-alert gh-alert-${cls}"><div class="gh-alert-header">${icon} ${label}</div><div class="gh-alert-body">${body}</div></div>`;
+  });
+}
+
+// [[페이지 제목]] 또는 [[페이지 제목|표시 텍스트]] → 위키 링크 HTML
+function processWikiLinks(markdown) {
+  return markdown.replace(/\[\[([^\]\n|]+?)(?:\|([^\]\n]+?))?\]\]/g, (match, title, display) => {
+    const t = title.trim();
+    const d = (display || title).trim();
+    const page = state.pages.find(p => p.title.toLowerCase() === t.toLowerCase());
+    if (page) {
+      return `<a class="wiki-link" data-page-id="${page.id}" href="#">${d}</a>`;
+    }
+    return `<span class="wiki-link-missing" title="존재하지 않는 페이지: ${escapeHtml(t)}">${d}</span>`;
+  });
+}
+
 function renderMarkdown(content) {
-  // Add missing space after # heading markers (e.g. "##제목" → "## 제목")
   const preprocessed = (content || '').replace(/^(#{1,6})([^\s#\n])/gm, '$1 $2');
-  return marked.parse(preprocessed);
+  const withLinks = processWikiLinks(preprocessed);
+  const raw = marked.parse(withLinks);
+  return DOMPurify.sanitize(processAlerts(raw), {
+    ADD_TAGS: ['input'],
+    ADD_ATTR: ['checked', 'disabled', 'type', 'data-page-id'],
+  });
 }
 
 function applyHighlight(container) {
@@ -155,7 +200,7 @@ function buildTOC(contentEl) {
     counters[lvl]++;
     for (let i = lvl + 1; i <= 3; i++) counters[i] = 0;
 
-    const numStr   = counters.slice(0, lvl + 1).join('-');
+    const numStr   = counters.slice(0, lvl + 1).join('.');
     const anchorId = `hs-${numStr}`;
     h.id = anchorId;
 
@@ -708,6 +753,10 @@ async function deletePage(id) {
 
 document.querySelectorAll('.toolbar-btn[data-md-before]').forEach(btn => {
   btn.addEventListener('click', () => insertMd(btn.dataset.mdBefore, btn.dataset.mdAfter));
+});
+
+document.querySelector('.toolbar-btn[data-action="table"]')?.addEventListener('click', () => {
+  insertMd('| 헤더 1 | 헤더 2 | 헤더 3 |\n| --- | --- | --- |\n| 내용 | 내용 | 내용 |\n', '');
 });
 
 function insertMd(before, after) {
