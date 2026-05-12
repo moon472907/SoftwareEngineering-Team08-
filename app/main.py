@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import engine, Base
 from app.routers import auth, users, pages # main.py에 pages 추가 
+from app.models.restore_request import PageRestoreRequest # 모델 인식 
 
 # DB 테이블 자동 생성
 Base.metadata.create_all(bind=engine)
