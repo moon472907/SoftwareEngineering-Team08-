@@ -1,18 +1,15 @@
-from passlib.context import CryptContext
+import bcrypt
 from jose import jwt
 from datetime import datetime, timedelta
 from app.core.config import settings
 
-# 비밀번호 암호화 도구
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-# 1. 비밀번호를 암호로 바꾸기
-def get_password_hash(password):
-    return pwd_context.hash(password)
+# 1. 비밀번호를 암호로 (passlib 대신 bcrypt 직접 사용)
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
 # 2. 비밀번호 확인
-def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
 
 # 3. 로그인 성공 시 JWT 토큰 발급 
 def create_access_token(user_id: int):
