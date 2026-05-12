@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from app.database import engine, Base
 from app.routers import auth, users, pages # main.py에 pages 추가 
 
@@ -6,6 +7,14 @@ from app.routers import auth, users, pages # main.py에 pages 추가
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Wiki API")
+
+app.add_middleware(
+    CORSMiddleware,  #### cors 추가 
+    allow_origins=["*"],  # 접속가능하게 
+    allow_credentials=True,
+    allow_methods=["*"],  # GET, POST 통과 
+    allow_headers=["*"],
+)
 
 # 라우터 등록
 app.include_router(auth.router)

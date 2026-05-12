@@ -16,6 +16,9 @@ const state = {
 // ─── API helpers ──────────────────────────────
 
 async function apiRequest(method, path, body = null, isForm = false) {
+  const API_BASE = 'http://localhost:8000'; // 백엔드 로컬 주소 명시 
+  const url = `${API_BASE}${path}`; // 합침 
+
   const opts = { method };
 
   if (isForm) {
@@ -28,7 +31,7 @@ async function apiRequest(method, path, body = null, isForm = false) {
     if (body !== null) opts.body = JSON.stringify(body);
   }
 
-  const res = await fetch(path, opts);
+  const res = await fetch(url, opts); // path 에서 url로 변경... 
   if (res.status === 204) return null;
 
   const data = await res.json().catch(() => null);
