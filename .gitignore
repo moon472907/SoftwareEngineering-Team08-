@@ -1,9 +1,35 @@
+# 가상환경
 .venv/
+
+# Python 캐시
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+
+# 테스트 / 커버리지
+.pytest_cache/
+.coverage
+htmlcov/
+
+# 데이터베이스
 *.db
 *.db-shm
 *.db-wal
+
+# 환경변수
 .env
+.env.*
+
+# IDE
 .vscode/
+.idea/
+
+# OS
 .DS_Store
+Thumbs.db
+
+# 빌드 산출물
+dist/
+build/
+*.egg-info/

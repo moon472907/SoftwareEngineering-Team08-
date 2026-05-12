@@ -8,6 +8,10 @@ from app.core.security import hash_password
 def get_user_by_email(db: Session, email: str):
     return db.query(User).filter(User.email == email).first()
 
+# 사용자명으로 유저 검색
+def get_user_by_username(db: Session, username: str):
+    return db.query(User).filter(User.username == username).first()
+
 # ID로 유저 검색
 def get_user_by_id(db: Session, user_id: int):
     return db.query(User).filter(User.id == user_id).first()
