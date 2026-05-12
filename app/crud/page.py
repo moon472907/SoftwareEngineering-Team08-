@@ -2,7 +2,7 @@ from typing import Optional
 
 from sqlalchemy.orm import Session
 
-from app.crud.archive import create_archive
+from app.crud.archive import create_archive_v2_db
 from app.models.page import Page
 from app.schemas.page import PageCreate, PageUpdate
 
@@ -32,8 +32,8 @@ def create_page(db: Session, page_in: PageCreate, author_id: int) -> Page:
 
 
 def update_page(db: Session, page: Page, page_in: PageUpdate, editor_id: int) -> Page:
-    # 수정 전 현재 버전을 아카이브에 저장
-    create_archive(db, page=page, editor_id=editor_id)
+    # 수정 전 현재 버전을 아카이브에 저장 (Method 2: diff 기반)
+    create_archive_v2_db(db, page=page, editor_id=editor_id)
 
     if page_in.title is not None:
         page.title = page_in.title

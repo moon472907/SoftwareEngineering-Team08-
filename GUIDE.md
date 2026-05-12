@@ -105,6 +105,7 @@ POST /auth/register
 ```
 ```json
 {
+  
   "username": "홍길동",
   "email": "hong@example.com",
   "password": "password123"

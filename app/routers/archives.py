@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.crud.archive import get_archive, get_archives_by_page
+from app.crud.archive import get_archive, get_archives_by_page, reconstruct_content
 from app.crud.page import get_page
 from app.database import get_db
 from app.dependencies import get_current_user
@@ -34,4 +34,19 @@ def read_archive(
     archive = get_archive(db, archive_id)
     if not archive or archive.page_id != page_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="아카이브를 찾을 수 없습니다.")
-    return archive
+
+    # diff 아카이브인 경우 전체 content 복원
+    if archive.diff_data is not None:
+        content = reconstruct_content(db, page_id, archive.version)
+    else:
+        content = archive.content or ""
+
+    return ArchiveResponse(
+        id=archive.id,
+        page_id=archive.page_id,
+        editor_id=archive.editor_id,
+        title=archive.title,
+        content=content,
+        version=archive.version,
+        archived_at=archive.archived_at,
+    )
