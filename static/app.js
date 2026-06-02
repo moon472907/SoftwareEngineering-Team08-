@@ -505,6 +505,7 @@ function renderPageView(page, likeStatus = { like_count: 0, is_liked: false }) {
             <span class="like-icon">${isLiked ? '❤️' : '🤍'}</span>
             <span id="like-count">${likeCount}</span>
           </button>
+          <button class="btn btn-ghost btn-sm" id="btn-report" title="${state.user ? '신고' : '로그인이 필요합니다'}">🚨 신고</button>
         </div>
       </div>
       <div id="toc-container"></div>
@@ -528,6 +529,7 @@ function renderPageView(page, likeStatus = { like_count: 0, is_liked: false }) {
   if (canDelete) document.getElementById('btn-del').addEventListener('click',  () => confirmDeletePage(page.id, page.title));
   document.getElementById('btn-hist').addEventListener('click', () => viewHistory(page.id));
   document.getElementById('btn-like').addEventListener('click', () => toggleLike(page.id));
+  document.getElementById('btn-report').addEventListener('click', () => openReportModal(page.id));
 }
 
 async function toggleLike(pageId) {
@@ -547,6 +549,38 @@ async function toggleLike(pageId) {
     if (btn) btn.disabled = false;
   }
 }
+
+// ─── Report ────────────────────────────────────
+
+function openReportModal(pageId) {
+  if (!state.user) { openModal('login-modal'); return; }
+  document.getElementById('report-reason').value = '';
+  document.getElementById('report-error').textContent = '';
+  document.getElementById('report-submit-btn').dataset.pageId = pageId;
+  openModal('report-modal');
+}
+
+document.getElementById('report-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const reason  = document.getElementById('report-reason').value.trim();
+  const errEl   = document.getElementById('report-error');
+  const btn     = document.getElementById('report-submit-btn');
+  const pageId  = btn.dataset.pageId;
+  errEl.textContent = '';
+
+  if (reason.length < 5) { errEl.textContent = '신고 사유를 5자 이상 입력하세요.'; return; }
+
+  btn.disabled = true;
+  try {
+    await apiRequest('POST', `/pages/${pageId}/reports`, { reason });
+    closeModal('report-modal');
+    showToast('신고가 접수되었습니다.');
+  } catch (e) {
+    errEl.textContent = e.message;
+  } finally {
+    btn.disabled = false;
+  }
+});
 
 // ─── Welcome view ──────────────────────────────
 
