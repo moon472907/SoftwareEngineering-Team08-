@@ -6,10 +6,10 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.database import Base, engine
-from app.models import Archive, Like, Page, User  # noqa: F401 — ensure models are registered
+from app.models import Archive, Like, Page, Report, User  # noqa: F401 — ensure models are registered
 from app.models.restore_request import PageRestoreRequest  # noqa: F401
 from app.routers import archives, auth, pages, users
-from app.routers import likes
+from app.routers import likes, reports
 
 Base.metadata.create_all(bind=engine)
 
@@ -28,6 +28,7 @@ app.include_router(users.router)
 app.include_router(pages.router)
 app.include_router(archives.router)
 app.include_router(likes.router)
+app.include_router(reports.router)
 
 _static_dir = Path(__file__).parent.parent / "static"
 app.mount("/static", StaticFiles(directory=_static_dir), name="static")
