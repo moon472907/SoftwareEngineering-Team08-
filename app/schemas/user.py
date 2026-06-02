@@ -22,7 +22,11 @@ class UserResponse(BaseModel):
 
     model_config = {"from_attributes": True}
 
-# 로그인 응답 
+# 로그인 응답
 class Token(BaseModel):
     access_token: str
-    token_type: str
+    token_type: str = "bearer"
+
+
+class TokenData(BaseModel):
+    username: Optional[str] = None

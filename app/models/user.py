@@ -1,7 +1,15 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime
-from sqlalchemy.sql import func
+from typing import TYPE_CHECKING
+
+from sqlalchemy import Boolean, Column, DateTime, Integer, String
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+
 from app.database import Base
+
+if TYPE_CHECKING:
+    from .page import Page
+    from .archive import Archive
+
 
 class User(Base):
     __tablename__ = "users"
@@ -15,4 +23,4 @@ class User(Base):
     created_at = Column(DateTime, server_default=func.now())
 
     pages = relationship("Page", back_populates="author", foreign_keys="[Page.author_id]")
-    archives = relationship("Archive", back_populates="editor")
+    archives = relationship("Archive", back_populates="editor", foreign_keys="[Archive.editor_id]")
