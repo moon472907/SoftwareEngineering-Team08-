@@ -699,6 +699,11 @@ body {
 
 .btn-sm { padding: 5px 11px; font-size: 13px; }
 
+.btn-like { background: transparent; color: var(--text-secondary); border-color: var(--border); gap: 5px; }
+.btn-like:hover:not(:disabled) { background: var(--bg); border-color: #f87096; color: #f87096; }
+.btn-like.liked { color: #f87096; border-color: #f87096; background: rgba(248, 112, 150, 0.12); }
+.btn-like.liked:hover:not(:disabled) { background: rgba(248, 112, 150, 0.2); }
+
 .icon-btn {
   width: 36px;
   height: 36px;

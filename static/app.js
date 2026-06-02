@@ -467,10 +467,13 @@ function renderPageList(pages) {
 async function viewPage(id) {
   setLoading(true);
   try {
-    const page = await apiRequest('GET', `/pages/${id}`);
+    const [page, likeStatus] = await Promise.all([
+      apiRequest('GET', `/pages/${id}`),
+      apiRequest('GET', `/pages/${id}/likes`).catch(() => ({ like_count: 0, is_liked: false })),
+    ]);
     state.currentPageId = id;
     renderPageList(state.pages);
-    renderPageView(page);
+    renderPageView(page, likeStatus);
   } catch (e) {
     showToast(e.message, 'error');
   } finally {
@@ -478,9 +481,11 @@ async function viewPage(id) {
   }
 }
 
-function renderPageView(page) {
+function renderPageView(page, likeStatus = { like_count: 0, is_liked: false }) {
   const canEdit   = !!state.user;
   const canDelete = state.user && (state.user.id === page.author_id || state.user.is_admin);
+  const isLiked   = likeStatus.is_liked;
+  const likeCount = likeStatus.like_count;
 
   const content = document.getElementById('content');
   content.innerHTML = `
@@ -496,6 +501,10 @@ function renderPageView(page) {
           ${canEdit   ? `<button class="btn btn-secondary btn-sm" id="btn-edit">✏️ 편집</button>` : ''}
           ${canDelete ? `<button class="btn btn-danger btn-sm"   id="btn-del">🗑️ 삭제</button>` : ''}
           <button class="btn btn-ghost btn-sm" id="btn-hist">📋 히스토리</button>
+          <button class="btn btn-like btn-sm${isLiked ? ' liked' : ''}" id="btn-like" title="${state.user ? '좋아요' : '로그인이 필요합니다'}">
+            <span class="like-icon">${isLiked ? '❤️' : '🤍'}</span>
+            <span id="like-count">${likeCount}</span>
+          </button>
         </div>
       </div>
       <div id="toc-container"></div>
@@ -518,6 +527,25 @@ function renderPageView(page) {
   if (canEdit)   document.getElementById('btn-edit').addEventListener('click', () => openEditModal(page.id));
   if (canDelete) document.getElementById('btn-del').addEventListener('click',  () => confirmDeletePage(page.id, page.title));
   document.getElementById('btn-hist').addEventListener('click', () => viewHistory(page.id));
+  document.getElementById('btn-like').addEventListener('click', () => toggleLike(page.id));
+}
+
+async function toggleLike(pageId) {
+  if (!state.user) { openModal('login-modal'); return; }
+  const btn = document.getElementById('btn-like');
+  if (btn) btn.disabled = true;
+  try {
+    const result = await apiRequest('POST', `/pages/${pageId}/likes`);
+    if (btn) {
+      btn.classList.toggle('liked', result.is_liked);
+      btn.querySelector('.like-icon').textContent = result.is_liked ? '❤️' : '🤍';
+      document.getElementById('like-count').textContent = result.like_count;
+      btn.disabled = false;
+    }
+  } catch (e) {
+    showToast(e.message, 'error');
+    if (btn) btn.disabled = false;
+  }
 }
 
 // ─── Welcome view ──────────────────────────────
