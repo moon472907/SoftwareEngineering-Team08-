@@ -5,13 +5,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.database import Base, engine
+from app.database import Base, engine, ensure_schema
 from app.models import Archive, Like, Page, Report, Tag, User  # noqa: F401 — ensure models are registered
 from app.models.restore_request import PageRestoreRequest  # noqa: F401
 from app.routers import archives, auth, pages, users
 from app.routers import likes, reports, tags
 
 Base.metadata.create_all(bind=engine)
+ensure_schema()  # 기존 DB에 신규 컬럼(락/메모) 보강
 
 app = FastAPI(title="Wiki API", version="1.0.0")
 

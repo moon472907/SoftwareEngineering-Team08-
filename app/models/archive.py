@@ -1,6 +1,5 @@
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Optional
-
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -23,6 +22,8 @@ class Archive(Base):
     # Method 2: Myers diff 결과(JSON) 저장 — content가 None일 때 사용
     diff_data: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     version: Mapped[int] = mapped_column(Integer, nullable=False)
+    # 이 버전을 교체한 수정에 대한 편집 요약(선택). 위키 편집 메모로 사용된다.
+    memo: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     archived_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

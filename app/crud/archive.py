@@ -199,6 +199,68 @@ def compute_diff(prev_content: str, curr_content: str) -> list[DiffEdit]:
     )
 
 
+def compute_diff_compact(prev_content: str, curr_content: str) -> list[dict]:
+    """
+    Myers diff를 계산해 변경 부분만 담은 hunk 목록으로 반환한다.
+    equal 라인을 저장하지 않으므로 공간 효율이 높다.
+
+    반환 형식:
+        [{"old_start": int, "delete_count": int, "new_lines": [str, ...]}, ...]
+        - old_start   : 이전 버전 기준 변경 시작 줄 번호 (0-indexed)
+        - delete_count: 이전 버전에서 제거할 줄 수
+        - new_lines   : 새 버전에 삽입할 줄 목록
+    """
+    prev_lines = prev_content.splitlines(keepends=True)
+    curr_lines = curr_content.splitlines(keepends=True)
+    groups = _group_edits(_myers_diff(prev_lines, curr_lines))
+
+    hunks: list[dict] = []
+    old_pos = 0
+    i = 0
+
+    while i < len(groups):
+        g = groups[i]
+        if g.op == "equal":
+            old_pos += len(g.lines)
+            i += 1
+            continue
+
+        # 연속된 delete/insert를 하나의 hunk로 묶음
+        delete_lines: list[str] = []
+        insert_lines: list[str] = []
+        while i < len(groups) and groups[i].op in ("delete", "insert"):
+            if groups[i].op == "delete":
+                delete_lines.extend(groups[i].lines)
+            else:
+                insert_lines.extend(groups[i].lines)
+            i += 1
+
+        hunks.append({
+            "old_start": old_pos,
+            "delete_count": len(delete_lines),
+            "new_lines": insert_lines,
+        })
+        old_pos += len(delete_lines)
+
+    return hunks
+
+
+def apply_hunks(lines: list[str], hunks: list[dict]) -> list[str]:
+    """
+    hunk 목록을 이전 버전의 줄 목록에 적용해 새 버전을 반환한다.
+    hunks는 old_start 오름차순(앞→뒤)으로 전달해야 한다.
+    """
+    result = list(lines)
+    offset = 0
+    for hunk in hunks:
+        pos = hunk["old_start"] + offset
+        del result[pos: pos + hunk["delete_count"]]
+        for j, line in enumerate(hunk["new_lines"]):
+            result.insert(pos + j, line)
+        offset += len(hunk["new_lines"]) - hunk["delete_count"]
+    return result
+
+
 def create_archive_ver2(
     prev_content: str,
     curr_content: str,
@@ -277,20 +339,22 @@ def reconstruct_content(db: Session, page_id: int, target_version: int) -> str:
         if arch.diff_data is None:
             content = arch.content or ""
             continue
-        result: list[str] = []
-        for edit in json.loads(arch.diff_data):
-            if edit["op"] in ("equal", "insert"):
-                result.extend(edit["lines"])
-        content = "".join(result)
+        lines = content.splitlines(keepends=True)
+        lines = apply_hunks(lines, json.loads(arch.diff_data))
+        content = "".join(lines)
 
     return content
 
 
-def create_archive_v2_db(db: Session, page: "Page", editor_id: int) -> Archive:
+def create_archive_v2_db(
+    db: Session, page: "Page", editor_id: int, memo: str | None = None
+) -> Archive:
     """
     Method 2: Myers diff를 DB에 저장하는 아카이브.
     - 첫 번째 아카이브: 전체 내용(base)을 content 컬럼에 저장
     - 이후 아카이브: 이전 버전과의 Myers diff를 diff_data 컬럼에 JSON으로 저장
+
+    memo: 이번 수정에 대한 편집 요약(선택). 교체되는 버전의 아카이브에 함께 보관한다.
     """
     prev_archive = (
         db.query(Archive)
@@ -308,21 +372,20 @@ def create_archive_v2_db(db: Session, page: "Page", editor_id: int) -> Archive:
             content=page.content,
             diff_data=None,
             version=page.version,
+            memo=memo,
         )
     else:
-        # 이전 버전 복원 후 Myers diff 직접 계산
+        # 이전 버전 복원 후 compact hunk diff 계산
         prev_content = reconstruct_content(db, page.id, prev_archive.version)
-        groups = compute_diff(prev_content, page.content)
+        hunks = compute_diff_compact(prev_content, page.content)
         archive = Archive(
             page_id=page.id,
             editor_id=editor_id,
             title=page.title,
             content=None,
-            diff_data=json.dumps(
-                [{"op": g.op, "lines": g.lines} for g in groups],
-                ensure_ascii=False,
-            ),
+            diff_data=json.dumps(hunks, ensure_ascii=False),
             version=page.version,
+            memo=memo,
         )
 
     db.add(archive)
