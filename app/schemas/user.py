@@ -30,3 +30,6 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     username: Optional[str] = None
+
+class UserReportCreate(BaseModel):
+     reason: str  # 신고 사유
