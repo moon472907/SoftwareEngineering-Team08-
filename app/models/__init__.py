@@ -3,3 +3,4 @@ from .page import Page
 from .archive import Archive
 from .like import Like
 from .report import Report
+from .tag import Tag

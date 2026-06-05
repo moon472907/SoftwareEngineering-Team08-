@@ -9,6 +9,7 @@ from app.database import Base
 if TYPE_CHECKING:
     from .user import User
     from .archive import Archive
+    from .tag import Tag
 
 
 class Page(Base):
@@ -33,3 +34,4 @@ class Page(Base):
     author: Mapped["User"] = relationship("User", back_populates="pages", foreign_keys=[author_id])
     last_editor: Mapped[Optional["User"]] = relationship("User", foreign_keys=[last_editor_id])
     archives: Mapped[list["Archive"]] = relationship("Archive", back_populates="page")
+    tags: Mapped[list["Tag"]] = relationship("Tag", secondary="page_tags", backref="pages")
