@@ -3,3 +3,4 @@ from .page import PageCreate, PageUpdate, PageResponse, PageListResponse
 from .archive import ArchiveResponse, ArchiveListResponse
 from .like import LikeStatus, LikedUserItem, LikedUsersResponse
 from .report import ReportCreate, ReportStatusUpdate, ReportResponse, ReportListResponse
+from .tag import TagCreate, TagResponse, TagListResponse

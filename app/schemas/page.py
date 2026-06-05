@@ -3,6 +3,8 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
+from app.schemas.tag import TagResponse
+
 
 class PageCreate(BaseModel):
     title: str = Field(min_length=1, max_length=255)
@@ -24,6 +26,7 @@ class PageResponse(BaseModel):
     is_deleted: bool
     created_at: datetime
     updated_at: datetime
+    tags: list[TagResponse] = []
 
     model_config = {"from_attributes": True}
 
@@ -34,5 +37,6 @@ class PageListResponse(BaseModel):
     author_id: int
     version: int
     updated_at: datetime
+    tags: list[TagResponse] = []
 
     model_config = {"from_attributes": True}
