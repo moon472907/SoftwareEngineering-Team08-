@@ -1278,3 +1278,138 @@ form { padding: 16px 24px 20px; }
   .header-left { width: auto; }
   .toc-box { max-width: 100%; }
 }
+
+/* ─── Tag section ─────────────────────────── */
+
+.tag-section {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.tag-section-title {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+}
+
+.tag-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 11px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: background .15s, border-color .15s, transform .1s;
+  background: rgba(99, 179, 237, 0.12);
+  border: 1px solid rgba(99, 179, 237, 0.35);
+  color: #90cdf4;
+  user-select: none;
+}
+
+.tag-badge:hover {
+  background: rgba(99, 179, 237, 0.22);
+  border-color: rgba(99, 179, 237, 0.6);
+  transform: translateY(-1px);
+}
+
+.tag-label {
+  pointer-events: none;
+}
+
+.tag-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  font-size: 11px;
+  line-height: 1;
+  background: rgba(99, 179, 237, 0.2);
+  color: #90cdf4;
+  flex-shrink: 0;
+  transition: background .12s, color .12s;
+  pointer-events: auto;
+}
+
+.tag-remove:hover {
+  background: rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+}
+
+.tag-add-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px 3px 8px;
+  border-radius: 20px;
+  border: 1px dashed var(--border);
+  background: transparent;
+  transition: border-color .15s, background .15s;
+}
+
+.tag-add-box:focus-within {
+  border-color: var(--primary);
+  background: rgba(59, 130, 246, 0.06);
+}
+
+.tag-add-icon {
+  font-size: 14px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+.tag-input {
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  width: 90px;
+  min-width: 60px;
+}
+
+.tag-input::placeholder { color: var(--text-muted); }
+
+/* ─── Search result tag header ────────────── */
+
+.search-result-tag-header {
+  padding: 7px 14px 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #90cdf4;
+  letter-spacing: .04em;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ─── Report button ───────────────────────── */
+
+.btn-report {
+  background: transparent;
+  color: var(--text-muted);
+  border-color: var(--border);
+  gap: 5px;
+  font-size: 13px;
+}
+
+.btn-report:hover:not(:disabled) {
+  background: var(--bg);
+  border-color: var(--danger);
+  color: var(--danger);
+}

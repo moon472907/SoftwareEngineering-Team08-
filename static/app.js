@@ -508,6 +508,24 @@ function renderPageView(page, likeStatus = { like_count: 0, is_liked: false }) {
           <button class="btn btn-ghost btn-sm" id="btn-report" title="${state.user ? '신고' : '로그인이 필요합니다'}">🚨 신고</button>
         </div>
       </div>
+      <div class="tag-section" id="tag-section">
+        <div class="tag-section-title">태그</div>
+        <div class="tag-list" id="tag-list">
+          ${(page.tags || []).map(t => `
+            <span class="tag-badge" data-tag-name="${escapeHtml(t.name)}">
+              <span class="tag-label">#${escapeHtml(t.name)}</span>
+              ${canEdit ? `<button class="tag-remove" data-tag-id="${t.id}" title="태그 제거">×</button>` : ''}
+            </span>
+          `).join('')}
+        </div>
+        ${canEdit ? `
+          <div class="tag-add-box">
+            <span class="tag-add-icon">🏷</span>
+            <input class="tag-input" id="tag-input" type="text" maxlength="50"
+              placeholder="태그 추가 후 Enter">
+          </div>
+        ` : ''}
+      </div>
       <div id="toc-container"></div>
       <div class="wiki-content" id="page-body">
         ${page.content ? renderMarkdown(page.content) : '<p style="color:var(--text-muted)">내용이 없습니다.</p>'}
@@ -530,6 +548,31 @@ function renderPageView(page, likeStatus = { like_count: 0, is_liked: false }) {
   document.getElementById('btn-hist').addEventListener('click', () => viewHistory(page.id));
   document.getElementById('btn-like').addEventListener('click', () => toggleLike(page.id));
   document.getElementById('btn-report').addEventListener('click', () => openReportModal(page.id));
+
+  // 태그 클릭 → 검색창에 #태그명 입력
+  document.querySelectorAll('.tag-badge .tag-label').forEach(el => {
+    el.addEventListener('click', () => {
+      const tagName = el.closest('.tag-badge').dataset.tagName;
+      searchInput.value = `#${tagName}`;
+      searchInput.dispatchEvent(new Event('input'));
+      searchInput.focus();
+    });
+  });
+
+  // 태그 제거 버튼
+  document.querySelectorAll('.tag-remove').forEach(btn => {
+    btn.addEventListener('click', () => removeTag(page.id, Number(btn.dataset.tagId)));
+  });
+
+  // 태그 추가 (Enter)
+  document.getElementById('tag-input')?.addEventListener('keydown', async e => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const name = e.target.value.trim().replace(/^#/, '');
+    if (!name) return;
+    await addTag(page.id, name);
+    e.target.value = '';
+  });
 }
 
 async function toggleLike(pageId) {
@@ -547,6 +590,42 @@ async function toggleLike(pageId) {
   } catch (e) {
     showToast(e.message, 'error');
     if (btn) btn.disabled = false;
+  }
+}
+
+// ─── Tags ──────────────────────────────────────
+
+async function addTag(pageId, tagName) {
+  try {
+    const tag = await apiRequest('POST', `/pages/${pageId}/tags`, { name: tagName });
+    const list = document.getElementById('tag-list');
+    const canEdit = !!state.user;
+    const badge = document.createElement('span');
+    badge.className = 'tag-badge';
+    badge.dataset.tagName = tag.name;
+    badge.innerHTML = `
+      <span class="tag-label">#${escapeHtml(tag.name)}</span>
+      ${canEdit ? `<button class="tag-remove" data-tag-id="${tag.id}" title="태그 제거">×</button>` : ''}
+    `;
+    badge.querySelector('.tag-label').addEventListener('click', () => {
+      searchInput.value = `#${tag.name}`;
+      searchInput.dispatchEvent(new Event('input'));
+      searchInput.focus();
+    });
+    badge.querySelector('.tag-remove')?.addEventListener('click', () => removeTag(pageId, tag.id));
+    list.appendChild(badge);
+    showToast(`#${tag.name} 태그 추가됨`);
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+}
+
+async function removeTag(pageId, tagId) {
+  try {
+    await apiRequest('DELETE', `/pages/${pageId}/tags/${tagId}`);
+    document.querySelector(`.tag-remove[data-tag-id="${tagId}"]`)?.closest('.tag-badge')?.remove();
+  } catch (e) {
+    showToast(e.message, 'error');
   }
 }
 
@@ -871,16 +950,54 @@ document.getElementById('page-content-input').addEventListener('input', syncPrev
 const searchInput   = document.getElementById('search-input');
 const searchResults = document.getElementById('search-results');
 
-searchInput.addEventListener('input', () => {
-  const q = searchInput.value.trim().toLowerCase();
+searchInput.addEventListener('input', async () => {
+  const raw = searchInput.value.trim();
+  const q   = raw.toLowerCase();
+
   if (!q) {
     searchResults.classList.remove('visible');
     renderPageList(state.pages);
     return;
   }
+
+  // #태그명 검색
+  if (q.startsWith('#')) {
+    const tagName = q.slice(1);
+    if (!tagName) { searchResults.classList.remove('visible'); return; }
+
+    searchResults.innerHTML = '<div class="search-result-item" style="color:var(--text-muted)">검색 중...</div>';
+    searchResults.classList.add('visible');
+
+    try {
+      const pages = await apiRequest('GET', `/tags/${encodeURIComponent(tagName)}/pages?limit=8`);
+      renderPageList(pages || []);
+      if (!pages || !pages.length) {
+        searchResults.innerHTML = `<div class="search-result-item" style="color:var(--text-muted)">#${escapeHtml(tagName)} 태그 페이지 없음</div>`;
+      } else {
+        searchResults.innerHTML = `
+          <div class="search-result-tag-header">🏷️ #${escapeHtml(tagName)} 태그 (${pages.length}건)</div>
+          ${pages.slice(0, 8).map(p => `
+            <div class="search-result-item" data-page-id="${p.id}">${escapeHtml(p.title)}</div>
+          `).join('')}
+        `;
+        searchResults.querySelectorAll('[data-page-id]').forEach(el => {
+          el.addEventListener('click', () => {
+            searchInput.value = '';
+            searchResults.classList.remove('visible');
+            renderPageList(state.pages);
+            viewPage(Number(el.dataset.pageId));
+          });
+        });
+      }
+    } catch {
+      searchResults.innerHTML = '<div class="search-result-item" style="color:var(--text-muted)">검색 실패</div>';
+    }
+    return;
+  }
+
+  // 제목 검색 (기존)
   const filtered = state.pages.filter(p => p.title.toLowerCase().includes(q));
   renderPageList(filtered);
-
   if (!filtered.length) {
     searchResults.innerHTML = '<div class="search-result-item" style="color:var(--text-muted)">검색 결과 없음</div>';
   } else {
