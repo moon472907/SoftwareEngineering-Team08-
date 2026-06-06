@@ -2,14 +2,33 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.crud.page import (
-    create_page, delete_page, get_deleted_page, get_page, get_page_by_title,
-    get_pages, get_trash_pages, permanent_delete_page, restore_page,
-    title_in_trash, update_page,
+    acquire_lock,
+    create_page,
+    delete_page,
+    get_deleted_page,
+    get_page,
+    get_page_by_title,
+    get_pages,
+    get_trash_pages,
+    is_locked_by_other,
+    lock_remaining_seconds,
+    permanent_delete_page,
+    release_lock,
+    restore_page,
+    title_in_trash,
+    update_page,
 )
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models.user import User
-from app.schemas.page import PageCreate, PageListResponse, PageResponse, PageUpdate, TrashPageResponse
+from app.schemas.page import (
+    PageCreate,
+    PageListResponse,
+    PageLockResponse,
+    PageResponse,
+    PageUpdate,
+    TrashPageResponse,
+)
 
 ####### 복원 모델 
 from app.models.restore_request import PageRestoreRequest
@@ -98,9 +117,84 @@ def update(
     page = get_page(db, page_id)
     if not page:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="페이지를 찾을 수 없습니다.")
+    if is_locked_by_other(page, current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_423_LOCKED,
+            detail=f"다른 사용자가 수정 중인 문서입니다. (locked_by_id={page.locked_by_id})",
+        )
     if page_in.title and page_in.title != page.title and get_page_by_title(db, page_in.title):
         raise HTTPException(status_code=400, detail="동일한 제목의 페이지가 이미 존재합니다.")
+    # update_page 내부에서 저장 후 락을 자동 해제한다.
     return update_page(db, page, page_in, editor_id=current_user.id)
+
+
+@router.post("/{page_id}/lock", response_model=PageLockResponse, summary="수정 락 획득")
+def lock_page(
+    page_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """수정을 시작할 때 문서 락을 잡는다.
+
+    - 다른 사용자가 유효한 락을 들고 있으면 423 Locked.
+    - 본인이 이미 잡았거나 락이 만료된 경우 새로 획득(갱신)한다.
+    """
+    page = get_page(db, page_id)
+    if not page:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="페이지를 찾을 수 없습니다.")
+    if is_locked_by_other(page, current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_423_LOCKED,
+            detail=f"다른 사용자가 수정 중인 문서입니다. (locked_by_id={page.locked_by_id})",
+        )
+    acquire_lock(db, page, current_user.id)
+    return PageLockResponse(
+        page_id=page.id,
+        locked=True,
+        locked_by_id=page.locked_by_id,
+        locked_at=page.locked_at,
+        expires_in_seconds=lock_remaining_seconds(page),
+    )
+
+
+@router.delete("/{page_id}/lock", response_model=PageLockResponse, summary="수정 락 해제")
+def unlock_page(
+    page_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """수정을 취소/완료할 때 락을 푼다. 락 소유자 또는 관리자만 해제할 수 있다."""
+    page = get_page(db, page_id)
+    if not page:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="페이지를 찾을 수 없습니다.")
+    if (
+        page.locked_by_id is not None
+        and page.locked_by_id != current_user.id
+        and not current_user.is_admin
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="락을 소유한 사용자 또는 관리자만 해제할 수 있습니다.",
+        )
+    release_lock(db, page)
+    return PageLockResponse(page_id=page.id, locked=False)
+
+
+@router.get("/{page_id}/lock", response_model=PageLockResponse, summary="수정 락 상태 조회")
+def get_lock_status(page_id: int, db: Session = Depends(get_db)):
+    """문서의 현재 락 상태를 조회한다."""
+    page = get_page(db, page_id)
+    if not page:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="페이지를 찾을 수 없습니다.")
+    remaining = lock_remaining_seconds(page)
+    locked = remaining is not None
+    return PageLockResponse(
+        page_id=page.id,
+        locked=locked,
+        locked_by_id=page.locked_by_id if locked else None,
+        locked_at=page.locked_at if locked else None,
+        expires_in_seconds=remaining,
+    )
 
 
 @router.delete("/{page_id}", status_code=status.HTTP_204_NO_CONTENT)

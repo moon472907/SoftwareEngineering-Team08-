@@ -10,7 +10,29 @@
       "Bash(git add *)",
       "Bash(.venv/Scripts/pip install *)",
       "Bash(python -c ' *)",
-      "Bash(git rm *)"
+      "Bash(git rm *)",
+      "Bash(.venv/Scripts/pip show *)",
+      "PowerShell(D:\\\\Project\\\\softEngineering-Team08\\\\.venv\\\\Scripts\\\\pip.exe show python-pptx 2>&1 | Select-Object -First 3)",
+      "PowerShell(& \"D:\\\\Project\\\\softEngineering-Team08\\\\.venv\\\\Scripts\\\\python.exe\" -m pip show python-pptx 2>&1 | Select-Object -First 3)",
+      "PowerShell(uv pip *)",
+      "PowerShell(& \"D:\\\\Project\\\\softEngineering-Team08\\\\.venv\\\\Scripts\\\\python.exe\" \"D:\\\\Project\\\\softEngineering-Team08\\\\make_ppt.py\")",
+      "Bash(git filter-branch *)",
+      "Bash(git stash *)",
+      "Bash(FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch -f --msg-filter \"python D:/Project/softEngineering-Team08/_filter_msg.py\" HEAD)",
+      "Bash(git push *)",
+      "Bash(git update-ref *)",
+      "Bash(cd /d D:\\\\Project\\\\softEngineering-Team08)",
+      "Bash(dir /b)",
+      "Bash(dir /b app)",
+      "Bash(dir /b app\\\\models)",
+      "Bash(dir /b app\\\\crud)",
+      "Bash(dir /b app\\\\routers)",
+      "Bash(dir /b app\\\\schemas)",
+      "Bash(python -c \"import app.main; print\\('OK: app.main imported, schema ensured'\\)\")",
+      "Bash(./.venv/Scripts/python.exe -c \"import app.main; print\\('OK: app.main imported, schema ensured'\\)\")",
+      "Bash(./.venv/Scripts/python.exe -c ' *)",
+      "Bash(PYTHONIOENCODING=utf-8 ./.venv/Scripts/python.exe -c ' *)",
+      "Bash(node --check static/app.js)"
     ]
   }
 }

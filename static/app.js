@@ -10,6 +10,8 @@ const state = {
   pages:         [],
   currentPageId: null,
   editingPageId: null,
+  editLockPageId: null,  // 현재 락을 보유 중인 페이지 id (없으면 null)
+  editLockTimer: null,   // 락 만료 알림 타이머 핸들
   sidebarOpen:   true,
 };
 
@@ -798,6 +800,7 @@ function renderHistoryView(pageId, archives, pageTitle) {
                 <div>
                   <div class="archive-version">v${a.version}</div>
                   <div class="archive-meta">${escapeHtml(a.title)}</div>
+                  ${a.memo ? `<div class="archive-memo">📝 ${escapeHtml(a.memo)}</div>` : ''}
                 </div>
                 <div style="text-align:right">
                   <div class="archive-meta">${formatDate(a.archived_at)}</div>
@@ -868,6 +871,10 @@ function openCreateModal() {
   document.getElementById('editor-submit-btn').textContent = '게시';
   document.getElementById('page-title-input').value = '';
   document.getElementById('page-content-input').value = '';
+  document.getElementById('page-memo-input').value = '';
+  document.getElementById('editor-memo-group').style.display = 'none';  // 새 페이지는 메모 없음
+  document.getElementById('editor-lock-warning').style.display = 'none';
+  clearLockExpiryTimer();
   document.getElementById('editor-error').textContent = '';
   resetPreview();
   openModal('editor-modal');
@@ -879,11 +886,28 @@ async function openEditModal(id) {
   setLoading(true);
   try {
     const page = await apiRequest('GET', `/pages/${id}`);
+    // 편집 시작 시 문서 락 획득. 다른 사용자가 수정 중이면 423로 거부됨.
+    let lock;
+    try {
+      lock = await apiRequest('POST', `/pages/${id}/lock`);
+      state.editLockPageId = id;
+    } catch (lockErr) {
+      if (lockErr.status === 423) {
+        showToast(lockErr.message || '다른 사용자가 수정 중입니다.', 'error');
+        return;
+      }
+      throw lockErr;
+    }
     state.editingPageId = id;
+    document.getElementById('editor-lock-warning').style.display = 'none';
+    // 락 만료(10분)까지 남은 시간 뒤에 만료 알림이 뜨도록 예약.
+    startLockExpiryTimer(lock.expires_in_seconds ?? 600);
     document.getElementById('editor-title-label').textContent = '페이지 편집';
     document.getElementById('editor-submit-btn').textContent = '저장';
     document.getElementById('page-title-input').value = page.title;
     document.getElementById('page-content-input').value = page.content || '';
+    document.getElementById('page-memo-input').value = '';
+    document.getElementById('editor-memo-group').style.display = '';  // 편집 시 메모 표시
     document.getElementById('editor-error').textContent = '';
     resetPreview();
     openModal('editor-modal');
@@ -895,10 +919,70 @@ async function openEditModal(id) {
   }
 }
 
+// 편집 중 잡은 락을 해제한다(저장하지 않고 닫을 때). 락이 없으면 아무 동작 안 함.
+async function releaseEditLockIfHeld() {
+  clearLockExpiryTimer();
+  const pid = state.editLockPageId;
+  if (pid == null) return;
+  state.editLockPageId = null;
+  try {
+    await apiRequest('DELETE', `/pages/${pid}/lock`);
+  } catch {
+    /* 이미 만료/해제됐거나 권한 없음 — 무시 */
+  }
+}
+
+// ─── 락 만료 타이머 ────────────────────────────
+function clearLockExpiryTimer() {
+  if (state.editLockTimer != null) {
+    clearTimeout(state.editLockTimer);
+    state.editLockTimer = null;
+  }
+}
+
+// 서버가 알려준 만료까지 남은 시간(초) 뒤에 만료 알림을 띄운다.
+function startLockExpiryTimer(seconds) {
+  clearLockExpiryTimer();
+  const ms = Math.max(0, Number(seconds) || 0) * 1000;
+  state.editLockTimer = setTimeout(onLockExpired, ms);
+}
+
+// 락이 만료되면: 보유 락 해제 간주 + 경고 배너/토스트 표시.
+function onLockExpired() {
+  state.editLockTimer = null;
+  // 만료된 락은 더 이상 보유한 것으로 보지 않는다(다른 사용자가 잡았을 수 있음).
+  state.editLockPageId = null;
+  const warn = document.getElementById('editor-lock-warning');
+  if (warn) warn.style.display = '';
+  showToast('편집 시간이 만료되었습니다 (10분 초과).', 'error');
+}
+
+// "다시 잠그고 계속 편집" — 락 재획득 시도.
+async function relockCurrentEdit() {
+  const id = state.editingPageId;
+  if (id == null) return;
+  try {
+    const lock = await apiRequest('POST', `/pages/${id}/lock`);
+    state.editLockPageId = id;
+    document.getElementById('editor-lock-warning').style.display = 'none';
+    startLockExpiryTimer(lock.expires_in_seconds ?? 600);
+    showToast('편집 잠금을 다시 획득했습니다.');
+  } catch (e) {
+    if (e.status === 423) {
+      showToast(e.message || '다른 사용자가 수정 중입니다.', 'error');
+    } else {
+      showToast(e.message, 'error');
+    }
+  }
+}
+
+document.getElementById('editor-relock-btn').addEventListener('click', relockCurrentEdit);
+
 document.getElementById('editor-form').addEventListener('submit', async e => {
   e.preventDefault();
   const title   = document.getElementById('page-title-input').value.trim();
   const content = document.getElementById('page-content-input').value;
+  const memo    = document.getElementById('page-memo-input').value.trim();
   const errEl   = document.getElementById('editor-error');
   errEl.textContent = '';
 
@@ -910,7 +994,10 @@ document.getElementById('editor-form').addEventListener('submit', async e => {
   try {
     let page;
     if (state.editingPageId) {
-      page = await apiRequest('PUT', `/pages/${state.editingPageId}`, { title, content });
+      page = await apiRequest('PUT', `/pages/${state.editingPageId}`, { title, content, memo: memo || null });
+      // 저장 성공 시 서버가 락을 자동 해제하므로 추적값/타이머만 초기화.
+      state.editLockPageId = null;
+      clearLockExpiryTimer();
       showToast('페이지가 업데이트되었습니다.');
     } else {
       page = await apiRequest('POST', '/pages/', { title, content });
@@ -926,6 +1013,19 @@ document.getElementById('editor-form').addEventListener('submit', async e => {
     setLoading(false);
   }
 });
+
+// ─── Editor close → 락 해제 ────────────────────
+// 저장하지 않고 에디터를 닫으면(취소/×/배경 클릭) 잡고 있던 락을 푼다.
+document.addEventListener('click', e => {
+  if (e.target.closest('[data-close="editor-modal"]') || e.target.id === 'editor-modal') {
+    releaseEditLockIfHeld();
+  }
+});
+// Esc로 닫는 경우 (state 기반으로만 판단하므로 다른 핸들러 순서와 무관)
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') releaseEditLockIfHeld();
+});
+// 탭/창을 닫거나 새로고침하는 경우는 서버의 10분 자동 만료로 회수된다.
 
 // ─── Delete page ───────────────────────────────
 

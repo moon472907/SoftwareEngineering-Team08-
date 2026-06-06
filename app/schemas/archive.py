@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 
 from pydantic import BaseModel
 
@@ -10,6 +11,7 @@ class ArchiveResponse(BaseModel):
     title: str
     content: str
     version: int
+    memo: Optional[str] = None
     archived_at: datetime
 
     model_config = {"from_attributes": True}
@@ -21,6 +23,7 @@ class ArchiveListResponse(BaseModel):
     editor_id: int
     title: str
     version: int
+    memo: Optional[str] = None
     archived_at: datetime
 
     model_config = {"from_attributes": True}

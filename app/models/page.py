@@ -23,6 +23,9 @@ class Page(Base):
     version: Mapped[int] = mapped_column(default=1)
     is_deleted: Mapped[bool] = mapped_column(default=False)
     deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    # 동시 수정 방지용 락. locked_by_id 가 None 이면 잠겨 있지 않은 상태.
+    locked_by_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
+    locked_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
@@ -34,5 +37,6 @@ class Page(Base):
 
     author: Mapped["User"] = relationship("User", back_populates="pages", foreign_keys=[author_id])
     last_editor: Mapped[Optional["User"]] = relationship("User", foreign_keys=[last_editor_id])
+    locked_by: Mapped[Optional["User"]] = relationship("User", foreign_keys=[locked_by_id])
     archives: Mapped[list["Archive"]] = relationship("Archive", back_populates="page")
     tags: Mapped[list["Tag"]] = relationship("Tag", secondary="page_tags", backref="pages")

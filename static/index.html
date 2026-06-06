@@ -104,6 +104,10 @@
         <button class="close-btn" data-close="editor-modal">×</button>
       </div>
       <form id="editor-form">
+        <div id="editor-lock-warning" class="editor-lock-warning" style="display:none">
+          <span>⚠️ 편집 시간이 만료되었습니다 (10분 초과). 그 사이 다른 사용자가 문서를 수정했을 수 있습니다.</span>
+          <button type="button" class="btn btn-secondary btn-sm" id="editor-relock-btn">다시 잠그고 계속 편집</button>
+        </div>
         <div class="form-group" style="padding:0 24px;padding-top:16px">
           <label for="page-title-input">제목</label>
           <input type="text" id="page-title-input" required placeholder="페이지 제목을 입력하세요">
@@ -138,6 +142,10 @@
             <textarea id="page-content-input" placeholder="Markdown으로 내용을 작성하세요...&#10;&#10;## 제목&#10;본문 내용...&#10;&#10;```python&#10;print('Hello, Wiki!')&#10;```"></textarea>
             <div id="editor-preview" class="wiki-content editor-preview-pane hidden"></div>
           </div>
+        </div>
+        <div class="form-group" id="editor-memo-group" style="padding:0 24px">
+          <label for="page-memo-input">편집 메모 (선택)</label>
+          <input type="text" id="page-memo-input" maxlength="500" placeholder="이번 수정 내용을 간단히 적어주세요 (예: 오타 수정)">
         </div>
         <div id="editor-error" class="error-msg" style="padding:0 24px"></div>
         <div class="form-actions">
