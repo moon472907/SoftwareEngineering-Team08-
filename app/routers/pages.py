@@ -1,11 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.crud.page import create_page, delete_page, get_page, get_page_by_title, get_pages, update_page
+from app.crud.page import (
+    create_page, delete_page, get_deleted_page, get_page, get_page_by_title,
+    get_pages, get_trash_pages, permanent_delete_page, restore_page,
+    title_in_trash, update_page,
+)
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models.user import User
-from app.schemas.page import PageCreate, PageListResponse, PageResponse, PageUpdate
+from app.schemas.page import PageCreate, PageListResponse, PageResponse, PageUpdate, TrashPageResponse
 
 ####### 복원 모델 
 from app.models.restore_request import PageRestoreRequest
@@ -28,7 +32,52 @@ def create(
 ):
     if get_page_by_title(db, page_in.title):
         raise HTTPException(status_code=400, detail="동일한 제목의 페이지가 이미 존재합니다.")
+    if title_in_trash(db, page_in.title):
+        raise HTTPException(
+            status_code=409,
+            detail="이 제목의 페이지가 휴지통에 있어 새로 만들 수 없습니다. 설정 > 휴지통에서 복구하거나 영구 삭제 후 다시 시도하세요.",
+        )
     return create_page(db, page_in, author_id=current_user.id)
+
+
+# ─── Trash endpoints ──────────────────────────
+
+@router.get("/trash", response_model=list[TrashPageResponse])
+def list_trash(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return get_trash_pages(db, user_id=current_user.id, is_admin=current_user.is_admin)
+
+
+@router.post("/{page_id}/restore", response_model=PageResponse)
+def restore(
+    page_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    page = get_deleted_page(db, page_id)
+    if not page:
+        raise HTTPException(status_code=404, detail="삭제된 페이지를 찾을 수 없습니다.")
+    if page.author_id != current_user.id and not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="권한이 없습니다.")
+    if get_page_by_title(db, page.title):
+        raise HTTPException(status_code=409, detail="같은 제목의 페이지가 이미 존재합니다. 복구 전에 기존 페이지를 삭제하세요.")
+    return restore_page(db, page)
+
+
+@router.delete("/{page_id}/permanent", status_code=status.HTTP_204_NO_CONTENT)
+def delete_permanent(
+    page_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    page = get_deleted_page(db, page_id)
+    if not page:
+        raise HTTPException(status_code=404, detail="삭제된 페이지를 찾을 수 없습니다.")
+    if page.author_id != current_user.id and not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="권한이 없습니다.")
+    permanent_delete_page(db, page)
 
 
 @router.get("/{page_id}", response_model=PageResponse)

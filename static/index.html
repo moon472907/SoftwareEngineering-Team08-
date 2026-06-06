@@ -186,6 +186,23 @@
     </div>
   </div>
 
+  <!-- Trash Modal -->
+  <div id="trash-modal" class="modal">
+    <div class="modal-box" style="max-width:560px">
+      <div class="modal-header">
+        <h2>🗑️ 휴지통</h2>
+        <button class="close-btn" data-close="trash-modal">×</button>
+      </div>
+      <div style="padding:12px 24px 4px;font-size:13px;color:var(--text-muted)">
+        삭제 후 3일이 지나면 자동으로 영구 삭제됩니다.
+      </div>
+      <div id="trash-list" style="padding:0 24px 8px;min-height:80px"></div>
+      <div class="form-actions">
+        <button class="btn btn-secondary" data-close="trash-modal">닫기</button>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>

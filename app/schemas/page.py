@@ -40,3 +40,12 @@ class PageListResponse(BaseModel):
     tags: list[TagResponse] = []
 
     model_config = {"from_attributes": True}
+
+
+class TrashPageResponse(BaseModel):
+    id: int
+    title: str
+    author_id: int
+    deleted_at: Optional[datetime]
+
+    model_config = {"from_attributes": True}

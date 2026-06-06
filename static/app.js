@@ -414,9 +414,11 @@ function renderAuthArea() {
       <span style="font-size:14px;color:var(--text-secondary);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
         ${escapeHtml(state.user.username)}${state.user.is_admin ? ' 👑' : ''}
       </span>
+      <button class="btn btn-ghost btn-sm" id="trash-btn" title="휴지통">🗑️</button>
       <button class="btn btn-secondary btn-sm" id="logout-btn">로그아웃</button>
     `;
     document.getElementById('logout-btn').addEventListener('click', doLogout);
+    document.getElementById('trash-btn').addEventListener('click', openTrashModal);
     if (newBtn) newBtn.style.display = 'flex';
   } else {
     area.innerHTML = `
@@ -660,6 +662,64 @@ document.getElementById('report-form').addEventListener('submit', async e => {
     btn.disabled = false;
   }
 });
+
+// ─── Trash ─────────────────────────────────────
+
+async function openTrashModal() {
+  openModal('trash-modal');
+  const listEl = document.getElementById('trash-list');
+  listEl.innerHTML = '<p style="color:var(--text-muted);font-size:14px;padding:16px 0">불러오는 중...</p>';
+  try {
+    const pages = await apiRequest('GET', '/pages/trash');
+    if (!pages || pages.length === 0) {
+      listEl.innerHTML = '<p style="color:var(--text-muted);font-size:14px;padding:16px 0">휴지통이 비어 있습니다.</p>';
+      return;
+    }
+    listEl.innerHTML = pages.map(p => `
+      <div class="trash-item" data-id="${p.id}">
+        <div class="trash-item-info">
+          <span class="trash-item-title">${escapeHtml(p.title)}</span>
+          <span class="trash-item-date">${p.deleted_at ? formatDate(p.deleted_at) + ' 삭제' : ''}</span>
+        </div>
+        <div class="trash-item-actions">
+          <button class="btn btn-secondary btn-sm trash-restore-btn" data-id="${p.id}">복구</button>
+          <button class="btn btn-danger btn-sm trash-perm-btn" data-id="${p.id}">영구 삭제</button>
+        </div>
+      </div>
+    `).join('');
+
+    listEl.querySelectorAll('.trash-restore-btn').forEach(btn => {
+      btn.addEventListener('click', () => trashRestore(Number(btn.dataset.id)));
+    });
+    listEl.querySelectorAll('.trash-perm-btn').forEach(btn => {
+      btn.addEventListener('click', () => trashPermanentDelete(Number(btn.dataset.id)));
+    });
+  } catch (e) {
+    listEl.innerHTML = `<p style="color:var(--danger);font-size:14px">${e.message}</p>`;
+  }
+}
+
+async function trashRestore(pageId) {
+  try {
+    const page = await apiRequest('POST', `/pages/${pageId}/restore`);
+    showToast(`"${page.title}" 복구 완료`);
+    await loadPages();
+    openTrashModal();
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+}
+
+async function trashPermanentDelete(pageId) {
+  if (!confirm('영구 삭제하면 복구할 수 없습니다. 계속하시겠습니까?')) return;
+  try {
+    await apiRequest('DELETE', `/pages/${pageId}/permanent`);
+    showToast('영구 삭제되었습니다.', 'info');
+    openTrashModal();
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+}
 
 // ─── Welcome view ──────────────────────────────
 

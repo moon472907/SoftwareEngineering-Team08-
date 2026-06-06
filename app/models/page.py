@@ -22,6 +22,7 @@ class Page(Base):
     last_editor_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
     version: Mapped[int] = mapped_column(default=1)
     is_deleted: Mapped[bool] = mapped_column(default=False)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

@@ -1279,6 +1279,46 @@ form { padding: 16px 24px 20px; }
   .toc-box { max-width: 100%; }
 }
 
+/* ─── Trash modal ────────────────────────────── */
+
+.trash-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.trash-item:last-child { border-bottom: none; }
+
+.trash-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.trash-item-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trash-item-date {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.trash-item-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
 /* ─── Tag section ─────────────────────────── */
 
 .tag-section {
