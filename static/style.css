@@ -1474,3 +1474,161 @@ form { padding: 16px 24px 20px; }
   border-color: var(--danger);
   color: var(--danger);
 }
+
+/* ─── Admin view ──────────────────────────── */
+
+.admin-view {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+.admin-header h1 {
+  font-size: 26px;
+  color: var(--text);
+}
+
+.admin-subtitle {
+  margin-top: 6px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.admin-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 24px 0 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.admin-tab {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color .15s, border-color .15s;
+}
+
+.admin-tab:hover { color: var(--text); }
+
+.admin-tab.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+.admin-empty {
+  color: var(--text-muted);
+  font-size: 14px;
+  padding: 32px 0;
+  text-align: center;
+}
+
+/* 사용자 테이블 */
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.admin-table th,
+.admin-table td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.admin-table th {
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+
+.admin-table td { color: var(--text); }
+.admin-table tbody tr:hover { background: var(--surface); }
+
+/* 배지 */
+.badge {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--surface);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+
+.badge-admin    { background: var(--primary-light); color: var(--primary); border-color: var(--primary); }
+.badge-active   { background: var(--success-bg); color: var(--success-fg); border-color: var(--success-border); }
+.badge-inactive { background: var(--error-bg); color: var(--error-fg); border-color: var(--error-border); }
+
+.badge-report-pending  { background: var(--warn-bg);    color: #fbbf24; border-color: var(--warn-border); }
+.badge-report-reviewed { background: var(--info-bg);    color: var(--info-fg); border-color: var(--info-border); }
+.badge-report-resolved { background: var(--success-bg); color: var(--success-fg); border-color: var(--success-border); }
+
+/* 신고 목록 */
+.admin-report-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.admin-report-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+}
+
+.admin-report-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.admin-report-page a { font-weight: 600; }
+.admin-report-deleted { color: var(--text-muted); font-weight: 600; }
+
+.admin-report-reason {
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.admin-report-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.admin-report-meta {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.admin-report-status {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.admin-report-status:focus {
+  outline: none;
+  border-color: var(--primary);
+}

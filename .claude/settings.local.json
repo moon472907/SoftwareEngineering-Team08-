@@ -32,7 +32,9 @@
       "Bash(./.venv/Scripts/python.exe -c \"import app.main; print\\('OK: app.main imported, schema ensured'\\)\")",
       "Bash(./.venv/Scripts/python.exe -c ' *)",
       "Bash(PYTHONIOENCODING=utf-8 ./.venv/Scripts/python.exe -c ' *)",
-      "Bash(node --check static/app.js)"
+      "Bash(node --check static/app.js)",
+      "Bash(.venv/Scripts/python.exe -c \"import app.main; from app.database import SessionLocal; from app.models.user import User; db=SessionLocal\\(\\); u=db.query\\(User\\).filter\\(User.email=='admin@admin.admin'\\).first\\(\\); print\\('admin exists:', bool\\(u\\), '| username:', u.username if u else None, '| is_admin:', u.is_admin if u else None\\); db.close\\(\\)\")",
+      "Bash(.venv/Scripts/python.exe -c ' *)"
     ]
   }
 }

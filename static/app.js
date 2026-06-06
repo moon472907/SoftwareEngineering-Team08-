@@ -416,11 +416,13 @@ function renderAuthArea() {
       <span style="font-size:14px;color:var(--text-secondary);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
         ${escapeHtml(state.user.username)}${state.user.is_admin ? ' 👑' : ''}
       </span>
+      ${state.user.is_admin ? `<button class="btn btn-ghost btn-sm" id="admin-btn" title="관리자 페이지">🛡️ 관리자</button>` : ''}
       <button class="btn btn-ghost btn-sm" id="trash-btn" title="휴지통">🗑️</button>
       <button class="btn btn-secondary btn-sm" id="logout-btn">로그아웃</button>
     `;
     document.getElementById('logout-btn').addEventListener('click', doLogout);
     document.getElementById('trash-btn').addEventListener('click', openTrashModal);
+    document.getElementById('admin-btn')?.addEventListener('click', openAdminView);
     if (newBtn) newBtn.style.display = 'flex';
   } else {
     area.innerHTML = `
@@ -720,6 +722,177 @@ async function trashPermanentDelete(pageId) {
     openTrashModal();
   } catch (e) {
     showToast(e.message, 'error');
+  }
+}
+
+// ─── Admin view ────────────────────────────────
+
+const REPORT_STATUS = {
+  pending:  { label: '대기',     cls: 'pending'  },
+  reviewed: { label: '검토됨',   cls: 'reviewed' },
+  resolved: { label: '처리완료', cls: 'resolved' },
+};
+
+let adminTab = 'users';
+
+function openAdminView() {
+  if (!state.user?.is_admin) { showToast('관리자만 접근할 수 있습니다.', 'error'); return; }
+  state.currentPageId = null;
+  renderPageList(state.pages);
+  adminTab = 'users';
+  renderAdminShell();
+  loadAdminTab();
+}
+
+function renderAdminShell() {
+  const content = document.getElementById('content');
+  content.innerHTML = `
+    <div class="admin-view">
+      <div class="admin-header">
+        <h1>🛡️ 관리자 페이지</h1>
+        <p class="admin-subtitle">사용자와 신고를 관리합니다.</p>
+      </div>
+      <div class="admin-tabs">
+        <button class="admin-tab" data-tab="users">👤 사용자 관리</button>
+        <button class="admin-tab" data-tab="reports">🚨 페이지 신고</button>
+      </div>
+      <div id="admin-panel" class="admin-panel"></div>
+    </div>
+  `;
+  content.querySelectorAll('.admin-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === adminTab);
+    btn.addEventListener('click', () => {
+      adminTab = btn.dataset.tab;
+      content.querySelectorAll('.admin-tab').forEach(b =>
+        b.classList.toggle('active', b.dataset.tab === adminTab));
+      loadAdminTab();
+    });
+  });
+}
+
+function loadAdminTab() {
+  if (adminTab === 'users') return loadAdminUsers();
+  if (adminTab === 'reports') return loadAdminReports();
+}
+
+function adminPanelLoading() {
+  document.getElementById('admin-panel').innerHTML =
+    '<p class="admin-empty">불러오는 중...</p>';
+}
+
+// 사용자 관리
+async function loadAdminUsers() {
+  adminPanelLoading();
+  const panel = document.getElementById('admin-panel');
+  try {
+    const users = await apiRequest('GET', '/users/');
+    if (!users || !users.length) {
+      panel.innerHTML = '<p class="admin-empty">사용자가 없습니다.</p>';
+      return;
+    }
+    panel.innerHTML = `
+      <table class="admin-table">
+        <thead>
+          <tr><th>ID</th><th>사용자명</th><th>이메일</th><th>권한</th><th>상태</th><th></th></tr>
+        </thead>
+        <tbody>
+          ${users.map(u => `
+            <tr data-uid="${u.id}">
+              <td>${u.id}</td>
+              <td>${escapeHtml(u.username || '–')}</td>
+              <td>${escapeHtml(u.email)}</td>
+              <td>${u.is_admin ? '<span class="badge badge-admin">관리자</span>' : '<span class="badge">일반</span>'}</td>
+              <td>${u.is_active ? '<span class="badge badge-active">활성</span>' : '<span class="badge badge-inactive">비활성</span>'}</td>
+              <td style="text-align:right">
+                ${(u.is_active && u.id !== state.user.id && !u.is_admin)
+                  ? `<button class="btn btn-danger btn-sm admin-deactivate-btn" data-uid="${u.id}" data-uname="${escapeHtml(u.username || u.email)}">비활성화</button>`
+                  : ''}
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+    panel.querySelectorAll('.admin-deactivate-btn').forEach(btn => {
+      btn.addEventListener('click', () =>
+        adminDeactivateUser(Number(btn.dataset.uid), btn.dataset.uname));
+    });
+  } catch (e) {
+    panel.innerHTML = `<p class="admin-empty" style="color:var(--danger)">${escapeHtml(e.message)}</p>`;
+  }
+}
+
+async function adminDeactivateUser(userId, username) {
+  if (!confirm(`"${username}" 계정을 비활성화하시겠습니까?`)) return;
+  try {
+    await apiRequest('DELETE', `/users/${userId}`);
+    showToast('계정이 비활성화되었습니다.', 'info');
+    loadAdminUsers();
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+}
+
+// 페이지 신고 관리
+function pageTitleById(pageId) {
+  const p = state.pages.find(p => p.id === pageId);
+  return p ? p.title : null;
+}
+
+async function loadAdminReports() {
+  adminPanelLoading();
+  const panel = document.getElementById('admin-panel');
+  try {
+    const reports = await apiRequest('GET', '/reports?limit=100');
+    if (!reports || !reports.length) {
+      panel.innerHTML = '<p class="admin-empty">접수된 신고가 없습니다.</p>';
+      return;
+    }
+    panel.innerHTML = `
+      <div class="admin-report-list">
+        ${reports.map(r => {
+          const st = REPORT_STATUS[r.status] || REPORT_STATUS.pending;
+          const title = pageTitleById(r.page_id);
+          return `
+            <div class="admin-report-card" data-rid="${r.id}">
+              <div class="admin-report-top">
+                <div class="admin-report-page">
+                  ${title
+                    ? `<a class="wiki-link" data-page-id="${r.page_id}" href="#">📄 ${escapeHtml(title)}</a>`
+                    : `<span class="admin-report-deleted">📄 페이지 #${r.page_id} (삭제됨/없음)</span>`}
+                </div>
+                <span class="badge badge-report-${st.cls}">${st.label}</span>
+              </div>
+              <div class="admin-report-reason">${escapeHtml(r.reason)}</div>
+              <div class="admin-report-bottom">
+                <span class="admin-report-meta">신고자 #${r.reporter_id} · ${formatDate(r.created_at)}</span>
+                <select class="admin-report-status" data-rid="${r.id}">
+                  ${Object.entries(REPORT_STATUS).map(([key, v]) =>
+                    `<option value="${key}"${key === r.status ? ' selected' : ''}>${v.label}</option>`).join('')}
+                </select>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+    panel.querySelectorAll('.admin-report-status').forEach(sel => {
+      sel.addEventListener('change', () =>
+        adminUpdateReport(Number(sel.dataset.rid), sel.value));
+    });
+  } catch (e) {
+    panel.innerHTML = `<p class="admin-empty" style="color:var(--danger)">${escapeHtml(e.message)}</p>`;
+  }
+}
+
+async function adminUpdateReport(reportId, newStatus) {
+  try {
+    await apiRequest('PATCH', `/reports/${reportId}`, { status: newStatus });
+    showToast('신고 상태가 변경되었습니다.');
+    loadAdminReports();
+  } catch (e) {
+    showToast(e.message, 'error');
+    loadAdminReports();
   }
 }
 
